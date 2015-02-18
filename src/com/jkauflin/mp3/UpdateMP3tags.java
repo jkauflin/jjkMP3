@@ -31,7 +31,7 @@ import org.jaudiotagger.tag.TagOptionSingleton;
 public class UpdateMP3tags {
 
     private static final SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    int jjkValue = 715;
+    int jjkValue = 8888;
     
 	boolean createAllCollFiles;
 	boolean updateAllTags;
