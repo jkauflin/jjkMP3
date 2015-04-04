@@ -209,7 +209,9 @@ public class UpdateMP3tags {
 
 	            // 2013-11-29 JJK - Convert the playlist files for use by computers using the mapped drive of M:
 	            //System.out.println("*** Converting playlist files ***");
-		    	//ConvertM3Us();
+			    // 2015-03-29 JJK - Now using computer as a DLNA media server, so using convert again to make sure M3U's point to the correct location
+		    	ConvertM3Us();
+	            System.out.println("ConvertM3Us successful");
 		    	
 	            System.out.println("Update successful");
 
@@ -869,12 +871,14 @@ id3v2_tag_bytes = *ID3
 	    // Internal method to process the M3U collections exported from a "local" machine and convert the
 	    // files locations to use a network address, so that the collections can be used by all computers
 	    // mapping the music to the M: drive
+	    // 2015-03-29 JJK - Now using computer as a DLNA media server, so using convert again to make sure M3U's point to the correct location
 	    //------------------------------------------------------------------------------------------------------
 	    private void ConvertM3Us()
 			throws Exception
 	    {
-	    	String playlistDirStr = "C:\\Users\\JohnDad\\SkyDrive\\Documents\\Playlists";
+	    	String playlistDirStr = "C:\\Users\\JohnDad\\SkyDrive\\Documents\\Music\\Playlist-Export";
 	    	String playlistOutDirStr = "D:\\jjkMusic\\Playlists";
+	    	
 	    	File playlistDir = null;
 	    	File playlistOutDir = null;
 	    	
@@ -884,7 +888,7 @@ id3v2_tag_bytes = *ID3
             catch (Exception e) {
                 throw new Exception("Error creating File from "+playlistDirStr+", "+e);
             }
-            
+
             try {
                 playlistOutDir = new File(playlistOutDirStr);
             }
@@ -892,6 +896,7 @@ id3v2_tag_bytes = *ID3
                 throw new Exception("Error creating File from "+playlistOutDirStr+", "+e);
             }
 			
+            /*
 	    	String hostName = "hostName";      
 	    	try {      
 	    	    hostName = java.net.InetAddress.getLocalHost().getHostName();
@@ -899,15 +904,20 @@ id3v2_tag_bytes = *ID3
 	    	    // hostName = LNGDAYL-4149706
 	    	} catch (Exception e) {      
 	    	}     	    	
-
 	    	
 	    	String homeGroupHost = "\\\\" + hostName;
 	    	String homeGroupLoc = "\\\\" + hostName + "\\" + rootDir.getName();
 	    	//System.out.println("homeGroupLoc = "+homeGroupLoc);
-
+			*/
+            
+            /*
 	    	String oldStr1 = "\\\\JJK-PC\\jjkMusic";
-	    	String oldStr2 = "D:\\jjkMusic";
+	    	String oldStr2 = "\\jjkMusic";
 
+	    	String newStr = "D:\\jjkMusic";
+			*/
+            
+//	    	D:\jjkMusic\Easy Listening\Misc\Misc\Firefall - You are the woman.mp3
 //	    	D:\jjkMusic\Rock\Paramore\(2013) Paramore\09 - Still Into You.mp3
 //	    	M:\Alternative\Fountains Of Wayne\(1996) Fountains Of Wayne\03 - Joe Rey.mp3
 
@@ -918,6 +928,11 @@ id3v2_tag_bytes = *ID3
 	    	\\JJK-PC\jjkMusic\Alternative\Fountains Of Wayne\(1996) Fountains Of Wayne\03 - Joe Rey.mp3
 	    	#EXTINF:169,Miller, Rhett - Caroline
 	    	\\JJK-PC\jjkMusic\Folk-Rock\Miller, Rhett\(2009) Rhett Miller\03 - Caroline.mp3
+
+#EXTM3U
+#EXTINF:219,Taylor Swift - Shake It Off
+\jjkMusic\Pop\Taylor Swift\(2014) 1989\06 - Shake It Off.mp3
+
 
 	    	\\JJK-PC\jjkMusic\Folk-Rock\Miller, Rhett\(2009) Rhett Miller\03 - Caroline.mp3
 
@@ -942,6 +957,8 @@ id3v2_tag_bytes = *ID3
 	        PrintWriter newCollFile = null;
 			BufferedReader br = null;
 			String inLine = "";
+			String newFilename = "";
+			String oldFilename = "";
 	        for (int i=0; i < FileArray.length; i++)
 	        {
 	            debugStr = "$$$$$ getName = *"+FileArray[i].getName()+"*";
@@ -951,61 +968,92 @@ id3v2_tag_bytes = *ID3
 	            	continue;
 	            }
 
-	            tempStr = FileArray[i].getName();
-	    	    FileType = tempStr.substring(tempStr.lastIndexOf(".")+1).toUpperCase();
+	            oldFilename = FileArray[i].getName();
+	    	    FileType = oldFilename.substring(oldFilename.lastIndexOf(".")+1).toUpperCase();
 	    	    if (!FileType.toUpperCase().equals("M3U"))
 	    	    {
 	    		    continue;
 	    	    }
 
+	    	    // Skip files that are set to Read Only
+	    	    /*
+	            if (!FileArray[i].canWrite())
+	            {
+	            	continue;
+	            }
+	            */
+	    	    
 	            try
                 {
-		    	    tempStr = playlistOutDirStr + "/" + FileArray[i].getName();
-		    	    //System.out.println("!!! tempStr = "+tempStr);
-                    tempFile = new File(tempStr);
-                    // If the previous MyCollections file exists, get rid of it
+		    	    newFilename = playlistOutDirStr + "/" + oldFilename;
+                    tempFile = new File(newFilename);
+                    // If the previous file exists, get rid of it
                     if (tempFile.exists()) {
                     	if (!tempFile.delete()) {
-                            throw new Exception("Error deleting previous MyCollections M3U file: " + tempStr);
+                            throw new Exception("Error deleting previous M3U file: " + newFilename);
                     	}
                     }
+                    tempFile = null;
                     
                     // Create a new MyCollections M3U file to copy the Exports file into
-                	newCollFile = new PrintWriter(new BufferedWriter(new FileWriter(new File(tempStr))));
+                	newCollFile = new PrintWriter(new BufferedWriter(new FileWriter(new File(newFilename))));
         			br = new BufferedReader(new FileReader(FileArray[i]));
 
         			String outLine;
         			while ((inLine = br.readLine()) != null) {
         				//outLine = inLine.replace("M:",homeGroupLoc);
         				//outLine = outLine.replace("D:",homeGroupHost);
-        				outLine = inLine.replace(oldStr1,"M:");
-        				outLine = outLine.replace(oldStr2,"M:");
+        				//outLine = inLine.replace(oldStr1,"M:");
+        				
+        				if (inLine.startsWith("\\jjkMusic")) {
+        					outLine = "D:" + inLine;
+        				} else {
+        					// Replace JJK-PC with D:
+            				outLine = inLine.replace("\\\\JJK-PC\\jjkMusic","D:\\jjkMusic");
+        				}
+        				
                     	newCollFile.println(outLine);
         			}
 
         			br.close();
                 	newCollFile.close();
-                    
-                    // Get rid of the Exports file after converting
-                	/*
-                	if (!FileArray[i].delete()) {
-                        throw new Exception("Error deleting Exports M3U file: " + FileArray[i].getName());
-                	}
-                	*/
                 }
                 //catch (IOException e)
-                catch (Exception e)
-                {
+                catch (Exception e) {
                     throw new Exception("Error opening M3U file: " + e);
                 }
 	            
 	        } // for (int i=0; i < FileArray.length; i++)
 	    	
 	    } // private void ConvertM3Us(File collectionsDirFile)
-	    
+
+	    /*
+	    private void renameFile(String oldName, String newName) throws Exception {
+	    	File oldFile = new File(oldName);
+	    	File newFile = new File(newName);
+
+	    	// Delete the file with the destination name (i.e. the original M3U file)
+	    	if (!newFile.delete()) {
+                throw new Exception("Error deleting Exports M3U file: " + newFile.getName());
+        	}
+
+	    	// Rename the _NEW to the original M3U name
+	    	boolean status = oldFile.renameTo(newFile) ;
+ 
+	    	if (status)
+	    		System.out.println("File renamed successfully!!");
+	    	else
+	    		System.out.println("File name myNewFile.txt already exists");
+            
+	    	// Set the rename file to Read Only
+    		if (!newFile.setReadOnly()) {
+            	throw new Exception("Error setting file to ReadOnly: "+newName);
+			}
+	    }
+	    */
 	    
 	    // void BubbleSort(int a[])
-	    void SortFileArray(File FArray[])
+	    private void SortFileArray(File FArray[])
 	    {
 	        boolean swapped;
 	        int i,j;
