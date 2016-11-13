@@ -1,9 +1,15 @@
 //----------------------------------------------------------------------------------------------------------
-// 2011-09-27 JJK Commented out the M3U file writes because now I just use album organizations in WINAMP9
-// 2011-09-30 JJK Modified to use the MyID3 library and correct run problems under Windows 7
-// 2012-07-23 JJK Worked on setting the ID3v2 tags (if they exist)
-// 2013-08-12 JJK Added convert for exported M3U files to change local root locations with one
-//                recognized by the HomeGroup (so that all users can use my M3U collections)
+// 2011-09-27 JJK 	Commented out the M3U file writes because now I just use album organizations in WINAMP9
+// 2011-09-30 JJK 	Modified to use the MyID3 library and correct run problems under Windows 7
+// 2012-07-23 JJK 	Worked on setting the ID3v2 tags (if they exist)
+// 2013-08-12 JJK 	Added convert for exported M3U files to change local root locations with one
+//                	recognized by the HomeGroup (so that all users can use my M3U collections)
+// 2016-09-30 JJK 	Changing to use new MP3 tag libraries (from GitHub), modifying tag to make sense
+//                	in Google Play, and updating artwork if missing.
+// 2016-10-08 JJK 	Not used the new libraries and not trying to update artwork in this (using mp3tag
+//					and artwork downloaders.
+//					Modified to add artist name to album if just Greatest Hits or Best Of, also change
+//                  Misc to hits (to help the artwork downloader)
 //----------------------------------------------------------------------------------------------------------
 package com.jkauflin.mp3;
 
@@ -14,9 +20,12 @@ import java.util.logging.Logger;
 //import java.sql.*;
 import java.text.*;
 
+import com.mpatric.mp3agic.*;
+
 import org.cmc.music.myid3.*;
-//import org.cmc.music.myid3.id3v2.MyID3v2Frame;
 import org.cmc.music.metadata.*;
+
+//import org.cmc.music.myid3.id3v2.MyID3v2Frame;
 //import org.cmc.music.myid3.examples.SampleUsage;
 //import org.cmc.music.metadata.MusicMetadataSet;
 /*
@@ -80,7 +89,9 @@ public class UpdateMP3tags {
     //MP3File 			temp_MP3File;
 	MyID3 				myID3;
 	MusicMetadataSet 	dataSet;
-
+    
+	Mp3File mp3file;
+	
 	/*
 	AudioFile audioFile = null;
 	Tag tag = null;
@@ -108,12 +119,14 @@ public class UpdateMP3tags {
 		UpdateMP3tags updateMP3tags = new UpdateMP3tags();
 		
 		updateMP3tags.createAllCollFiles = false;
-		//updateMP3tags.updateAllTags = false;
-		// 2012-05-28 Updating all tags after moving some files to archive and renaming some
-		//updateMP3tags.updateAllTags = true;
-		updateMP3tags.updateAllTags = false;
 		updateMP3tags.updateAllDbSongs = false;
+		// 2012-05-28 Updating all tags after moving some files to archive and renaming some
+
 		updateMP3tags.makeAllFilesReadWrite = false;
+		updateMP3tags.updateAllTags = false;
+
+		//updateMP3tags.makeAllFilesReadWrite = true;
+		//updateMP3tags.updateAllTags = true;
 
 		try {
 		    Calendar startTime = Calendar.getInstance();
@@ -123,7 +136,8 @@ public class UpdateMP3tags {
 
 			//updateMP3tags.updateMusicCatalog(System.getProperty("user.dir"));
 			//updateMP3tags.updateMusicCatalog("M:\\");
-			updateMP3tags.updateMusicCatalog("D:\\jjkMusic");
+			//updateMP3tags.updateMusicCatalog("D:\\jjkMusic");
+			updateMP3tags.updateMusicCatalog("D:\\jjkMusicStaging");
 			
 		    Calendar endTime = Calendar.getInstance();
 			System.out.println(dateTimeFormat.format(endTime.getTime())+" - In the UpdateMP3tags class");
@@ -210,8 +224,8 @@ public class UpdateMP3tags {
 	            // 2013-11-29 JJK - Convert the playlist files for use by computers using the mapped drive of M:
 	            //System.out.println("*** Converting playlist files ***");
 			    // 2015-03-29 JJK - Now using computer as a DLNA media server, so using convert again to make sure M3U's point to the correct location
-		    	ConvertM3Us();
-	            System.out.println("ConvertM3Us successful");
+		    	//ConvertM3Us();
+	            //System.out.println("ConvertM3Us successful");
 		    	
 	            System.out.println("Update successful");
 
@@ -260,9 +274,9 @@ public class UpdateMP3tags {
 	        
 	        for (int i=0; i < FileArray.length; i++)
 	        {
-	            debugStr = m_DirLevel+" >>> getName = *"+FileArray[i].getName()+"*";
+	            debugStr = m_DirLevel+" >>>>> getName = *"+FileArray[i].getName()+"*";
 	            //System.out.println(debugStr);
-	            
+
 	            if (FileArray[i].isDirectory())
 	            {
 	    		    if (m_DirLevel == 1)
@@ -330,6 +344,34 @@ public class UpdateMP3tags {
 	    				    m_Year  = Integer.parseInt(m_Album.substring(1,5));
 	    				    m_Title = m_Album.substring(7);
 	    			    }
+	    			    
+	    			    // If album title is too generic, add the artist name so it will be unique
+	    	    	    if (m_Title.toLowerCase().equals("greatest hits") 
+		    	    	    	|| m_Title.toLowerCase().equals("the greatest hits")
+		    	    	    	|| m_Title.toLowerCase().equals("the greatest")
+		    	    	    	|| m_Title.toLowerCase().equals("greatest")
+		    	    	    	|| m_Title.toLowerCase().equals("essential")
+		    	    	    	|| m_Title.toLowerCase().equals("the essential")
+		    	    	    	|| m_Title.toLowerCase().equals("hits")
+		    	    	    	|| m_Title.toLowerCase().equals("the hits")
+		    	    	    	|| m_Title.toLowerCase().equals("best")
+		    	    	    	|| m_Title.toLowerCase().equals("best of")
+		    	    	    	|| m_Title.toLowerCase().equals("the best")
+		    	    	    	|| m_Title.toLowerCase().equals("the best of")
+		    	    	    	|| m_Title.toLowerCase().equals("the very best of")
+		    	    	    	|| m_Title.toLowerCase().equals("anthology")
+		    	    	    	|| m_Title.toLowerCase().equals("singles")
+		    	    	    	|| m_Title.toLowerCase().equals("the singles")
+		    	    	    	|| m_Title.toLowerCase().equals("ultimate")
+		    	    	    	|| m_Title.toLowerCase().equals("ultimate collection")
+		    	    	    	|| m_Title.toLowerCase().equals("the ultimate collection")
+		    	    	    	|| m_Title.toLowerCase().equals("definitive collection")
+		    	    	    	|| m_Title.toLowerCase().equals("the definitive collection")
+		    	    	    	|| m_Title.toLowerCase().equals("the millennium collection")
+	    	    	    	) {
+	    	    	    	m_Title = m_Artist + " " + m_Title;
+	    	    	    }
+	    			    
 	    		    }
 
 	                // Recursively call the CatalogMP3s method with the current directory File
@@ -343,6 +385,26 @@ public class UpdateMP3tags {
 	            tempStr = FileArray[i].getName();
 	    	    FileType = tempStr.substring(tempStr.lastIndexOf(".")+1).toUpperCase();
 
+	    	    /*	            
+	            File getName() = 15 - The Mayor Of Simpleton.mp3
+	            		Song      = The Mayor Of Simpleton
+	            		Artist    = XTC
+	            		Album     = (1997) Greatest Hits
+	            		Category  = Alternative, Override = 
+	            		Year      = 1997
+	            		Title     = XTC Greatest Hits
+	            		SongIndex = 15
+	            		4 >>>>> getName = *AlbumArtSmall.jpg*
+	            		4 >>>>> getName = *AlbumArt_{DA85D12C-B9EA-42D9-AC1B-AF6B21BE00D8}_Large.jpg*
+	            		4 >>>>> getName = *AlbumArt_{DA85D12C-B9EA-42D9-AC1B-AF6B21BE00D8}_Small.jpg*
+	            		4 >>>>> getName = *Folder.jpg*
+	            		4 >>>>> getName = *Thumbs.db*
+	            		4 >>>>> getName = *desktop.ini*
+	            		3 >>>>> getName = *desktop.ini*
+	    	     */	            
+	            // Check if there is a good artwork image to use and add it to the MP3 (previous MP3?) - maybe not
+	    	    
+	    	    
 	    	    if (!FileType.toUpperCase().equals("MP3"))
 	    	    {
 	    		    continue;
@@ -364,6 +426,9 @@ public class UpdateMP3tags {
 	    			    m_Artist = m_Song.substring(0,m_Pos).trim();
 	    			    m_Song	 = m_Song.substring(m_Pos+3).trim();
 	                    artistFound = true;
+	                    
+	                    // 2016-10-08 Use "Artist hits" instead of "Misc" to make unique in Google Play and help artwork downloads
+    	    	    	m_Title = m_Artist + " hits";
 	    		    }
 	    	    }
 	    	    else if (m_Song.indexOf(" - ") >= 0)
@@ -523,48 +588,7 @@ public class UpdateMP3tags {
 	            }
 
 	            //-------------------------------------------------------------------------------------
-	            // If the file is NOT read-only, or the override says to update the database for
-	            // all songs, then do the database insert for the current song
 	            //-------------------------------------------------------------------------------------
-	            if (!fileIsReadOnly || updateAllDbSongs)
-	            {
-	            	/*
-	            	Song song = new Song();
-	    			SongPK songPK = new SongPK();
-	    			songPK.setAlbum(m_Album);
-	    			songPK.setArtist(m_Artist);
-	    			songPK.setSong(m_Song);
-	    			song.setId(songPK);
-	    			song.setAlbumDisc(m_AlbumDisc);
-	    			song.setCategory(m_Category);
-	                if (m_CategoryOverride != null && !m_CategoryOverride.equals(""))
-	                {
-	        			song.setCategory(m_CategoryOverride);
-	                }
-	    			song.setLastChanged(SysTimeStamp);
-	    			song.setRating(0);
-	    			song.setSongIndex(m_SongIndex);
-	    			song.setTitle(m_Title);
-	    			song.setYear(m_Year);
-
-	                System.out.println("-----------------------------------------------------------------------");
-	                System.out.println("File getName() = "+FileArray[i].getName());
-	                System.out.println("Song      = "+m_Song);
-	                System.out.println("Artist    = "+m_Artist);
-	                System.out.println("Album     = "+m_Album);
-	                System.out.println("Category  = "+m_Category+", Override = "+m_CategoryOverride);
-	                System.out.println("Year      = "+m_Year);
-	                System.out.println("Title     = "+m_Title);
-	                System.out.println("SongIndex = "+m_SongIndex);
-	                System.out.println("AlbumDisc = "+m_AlbumDisc);
-
-	    			// If songs exists update, else insert
-	    			//dbEntityManager.updateSong(song);
-	            	//System.out.println("$$$ Update Successful, song = "+song.getId().getSong()+" Artist = "+song.getId().getArtist());
-	            	 * 
-	            	 */
-	            }
-	            
 	            if (fileIsReadOnly)
 	            {
 	                m_ReadOnly_cnt++;
@@ -589,6 +613,79 @@ public class UpdateMP3tags {
 
 	            	try
 	                {
+	            		
+	            		//mp3file = new Mp3File(FileArray[i]);
+	            		/*
+	            		System.out.println("Length of this mp3 is: " + mp3file.getLengthInSeconds() + " seconds");
+	            		System.out.println("Bitrate: " + mp3file.getBitrate() + " kbps " + (mp3file.isVbr() ? "(VBR)" : "(CBR)"));
+	            		System.out.println("Sample rate: " + mp3file.getSampleRate() + " Hz");
+	            		System.out.println("Has ID3v1 tag?: " + (mp3file.hasId3v1Tag() ? "YES" : "NO"));
+	            		System.out.println("Has ID3v2 tag?: " + (mp3file.hasId3v2Tag() ? "YES" : "NO"));
+	            		System.out.println("Has custom tag?: " + (mp3file.hasCustomTag() ? "YES" : "NO"));
+
+	            		if (mp3file.hasId3v1Tag()) {
+	            			  ID3v1 id3v1Tag = mp3file.getId3v1Tag();
+	            			  System.out.println("Track: " + id3v1Tag.getTrack());
+	            			  System.out.println("Artist: " + id3v1Tag.getArtist());
+	            			  System.out.println("Title: " + id3v1Tag.getTitle());
+	            			  System.out.println("Album: " + id3v1Tag.getAlbum());
+	            			  System.out.println("Year: " + id3v1Tag.getYear());
+	            			  System.out.println("Genre: " + id3v1Tag.getGenre() + " (" + id3v1Tag.getGenreDescription() + ")");
+	            			  System.out.println("Comment: " + id3v1Tag.getComment());
+	            		}
+	            		
+	            		if (mp3file.hasId3v2Tag()) {
+	            			  ID3v2 id3v2Tag = mp3file.getId3v2Tag();
+	            			  System.out.println("Track: " + id3v2Tag.getTrack());
+	            			  System.out.println("Artist: " + id3v2Tag.getArtist());
+	            			  System.out.println("Title: " + id3v2Tag.getTitle());
+	            			  System.out.println("Album: " + id3v2Tag.getAlbum());
+	            			  System.out.println("Year: " + id3v2Tag.getYear());
+	            			  System.out.println("Genre: " + id3v2Tag.getGenre() + " (" + id3v2Tag.getGenreDescription() + ")");
+	            			  System.out.println("Comment: " + id3v2Tag.getComment());
+	            			  System.out.println("Composer: " + id3v2Tag.getComposer());
+	            			  System.out.println("Publisher: " + id3v2Tag.getPublisher());
+	            			  System.out.println("Original artist: " + id3v2Tag.getOriginalArtist());
+	            			  System.out.println("Album artist: " + id3v2Tag.getAlbumArtist());
+	            			  System.out.println("Copyright: " + id3v2Tag.getCopyright());
+	            			  System.out.println("URL: " + id3v2Tag.getUrl());
+	            			  System.out.println("Encoder: " + id3v2Tag.getEncoder());
+	            			  byte[] albumImageData = id3v2Tag.getAlbumImage();
+	            			  if (albumImageData != null) {
+	            			    System.out.println("Have album image data, length: " + albumImageData.length + " bytes");
+	            			    System.out.println("Album image mime type: " + id3v2Tag.getAlbumImageMimeType());
+	            			  }
+	            		}
+	            		
+	            		ID3v2 id3v2Tag;
+	            		if (mp3file.hasId3v2Tag()) {
+	            		  id3v2Tag = mp3file.getId3v2Tag();
+	            		} else {
+	            		  // mp3 does not have an ID3v2 tag, let's create one..
+	            		  id3v2Tag = new ID3v24Tag();
+	            		  mp3file.setId3v2Tag(id3v2Tag);
+	            		}
+	          
+	            		id3v2Tag.setTrack("5");
+	            		id3v2Tag.setArtist("An Artist");
+	            		id3v2Tag.setTitle("The Title");
+	            		id3v2Tag.setAlbum("The Album");
+	            		id3v2Tag.setYear("2001");
+	            		id3v2Tag.setGenre(12);
+	            		id3v2Tag.setComment("Some comment");
+	            		id3v2Tag.setComposer("The Composer");
+	            		id3v2Tag.setPublisher("A Publisher");
+	            		id3v2Tag.setOriginalArtist("Another Artist");
+	            		id3v2Tag.setAlbumArtist("An Artist");
+	            		id3v2Tag.setCopyright("Copyright");
+	            		id3v2Tag.setUrl("http://foobar");
+	            		id3v2Tag.setEncoder("The Encoder");
+	            		mp3file.save("c://Users//JohnDad//"+FileArray[i].getName());
+	            		
+	            		*/
+	            		
+
+	            		
 	            		//audioFile = AudioFileIO.read(FileArray[i]);
 	            		//tag = audioFile.getTag();
 
@@ -723,11 +820,15 @@ public class UpdateMP3tags {
 	            		}
 	            		*/
 
+	            		
+	            		//==================================================================================================================================
 	            		// Update the MP3 tags
 	                    if (dataSet == null) {
 	                    	dataSet = myID3.read(FileArray[i]);
 	                    }
+	            		//==================================================================================================================================
 
+	            		
 	                    //myID3.removeTags(FileArray[i], FileArray[i]);
 	                    	                    
 	                    //dataSet.id3v2Clean.setAlbum("jjk album");
@@ -798,7 +899,8 @@ id3v2_tag_bytes = *ID3
 		new MyID3().write(srcFile, dstFile, src_set, metadataToWrite);
 */
 	            		//myID3.setSkipId3v2();
-	            		
+
+	            		//==================================================================================================================================
 	            		dataSet.merged.setSongTitle(m_Song);
 	            		dataSet.merged.setArtist(m_Artist);
 	            		dataSet.merged.setAlbum(m_Title);
@@ -827,28 +929,24 @@ id3v2_tag_bytes = *ID3
 		                	//dataSet.merged.setDiscNumber(AlbumDiscNum);
 		                }
 		                
+		                /*
+		                ImageData image;
+		                dataSet.merged.addPicture(image);
+		                */
+		                
 	            		myID3.update(FileArray[i], dataSet, dataSet.merged);
 	                    //dataSet.id3v2Raw.bytes
 	            		//myID3.update(FileArray[i], dataSet, dataSet.id3v1Clean);
 	                    dataSet = null;
+	            		//==================================================================================================================================
 	                    
-	            		if (!FileArray[i].setReadOnly())
-	    				{
-	                    	throw new Exception("Error setting mp3 to ReadOnly: "+FileArray[i].getAbsolutePath());
-	    				}
-	                    
-	            		/*
-	                    System.out.println("-------------------------TAGS UPDATED---------------------------");
-	                    System.out.println("File getName() = "+FileArray[i].getName());
-	                    System.out.println("Song      = "+m_Song);
-	                    System.out.println("Artist    = "+m_Artist);
-	                    System.out.println("Album     = "+m_Album);
-	                    System.out.println("Category  = "+m_Category+", Override = "+m_CategoryOverride);
-	                    System.out.println("Year      = "+m_Year);
-	                    System.out.println("Title     = "+m_Title);
-	                    System.out.println("SongIndex = "+m_SongIndex);
-	                    System.out.println("AlbumDisc = "+m_AlbumDisc);
-	            		*/
+		                if (!makeAllFilesReadWrite) {
+		            		if (!FileArray[i].setReadOnly())
+		    				{
+		                    	throw new Exception("Error setting mp3 to ReadOnly: "+FileArray[i].getAbsolutePath());
+		    				}
+		                }
+
 	                }
 	                catch(Exception e)
 	                {
