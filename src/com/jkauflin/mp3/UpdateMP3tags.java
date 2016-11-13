@@ -20,7 +20,7 @@ import java.util.logging.Logger;
 //import java.sql.*;
 import java.text.*;
 
-import com.mpatric.mp3agic.*;
+//import com.mpatric.mp3agic.*;
 
 import org.cmc.music.myid3.*;
 import org.cmc.music.metadata.*;
@@ -90,7 +90,7 @@ public class UpdateMP3tags {
 	MyID3 				myID3;
 	MusicMetadataSet 	dataSet;
     
-	Mp3File mp3file;
+	//Mp3File mp3file;
 	
 	/*
 	AudioFile audioFile = null;
